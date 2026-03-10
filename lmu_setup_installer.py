@@ -196,6 +196,36 @@ def guess_car_from_svm(p: Path) -> str | None:
 
 
 def guess_track_from_svm(p: Path, available_tracks: list[str] | None = None) -> str | None:
+    """Rileva il tracciato: prima dalla cartella padre, poi dal contenuto SVM,
+    infine fuzzy-match sul nome file."""
+
+    def _fuzzy_match(source: str, tracks: list[str]) -> str | None:
+        sn = re.sub(r'[\s_\-]+', '', source).lower()
+        best_match = None
+        best_score = 0
+        for track in tracks:
+            tn = re.sub(r'[\s_\-]+', '', track).lower()
+            if tn in sn or sn in tn:
+                score = min(len(tn), len(sn))
+                if score > best_score:
+                    best_score = score
+                    best_match = track
+                continue
+            parts = re.split(r'[\s_\-]+', track.lower())
+            for part in parts:
+                if len(part) >= 4 and part in sn:
+                    if len(part) > best_score:
+                        best_score = len(part)
+                        best_match = track
+        return best_match
+
+    # 1) Cartella padre (es. "Portimaowec" → "Portimao")
+    if available_tracks and p.parent.name:
+        m = _fuzzy_match(p.parent.name, available_tracks)
+        if m:
+            return m
+
+    # 2) Campi espliciti dentro il file SVM
     try:
         t = p.read_text(encoding="utf-8", errors="ignore")
         for pat in [r'TrackName="([^"]+)"', r"TrackName=([^\r\n]+)",
@@ -209,34 +239,13 @@ def guess_track_from_svm(p: Path, available_tracks: list[str] | None = None) -> 
                 return v
     except Exception:
         pass
-    # Fallback: fuzzy-match filename and parent folder against available tracks
+
+    # 3) Fuzzy-match sul nome del file
     if available_tracks:
-        sources = []
-        if p.parent.name:
-            sources.append(p.parent.name)
-        sources.append(p.stem)
-        best_match = None
-        best_score = 0
-        for src in sources:
-            sn = re.sub(r'[\s_\-]+', '', src).lower()
-            for track in available_tracks:
-                tn = re.sub(r'[\s_\-]+', '', track).lower()
-                # Full containment
-                if tn in sn or sn in tn:
-                    score = min(len(tn), len(sn))
-                    if score > best_score:
-                        best_score = score
-                        best_match = track
-                    continue
-                # Significant parts of track folder name (>=4 chars)
-                parts = re.split(r'[\s_\-]+', track.lower())
-                for part in parts:
-                    if len(part) >= 4 and part in sn:
-                        if len(part) > best_score:
-                            best_score = len(part)
-                            best_match = track
-        if best_match:
-            return best_match
+        m = _fuzzy_match(p.stem, available_tracks)
+        if m:
+            return m
+
     return None
 
 
