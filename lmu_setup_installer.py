@@ -182,12 +182,20 @@ def guess_car_from_svm(p: Path) -> str | None:
             m = re.search(pat, t, re.IGNORECASE)
             if m:
                 return m.group(1).strip()
+        # LMU format: VehicleClassSetting="BMW_M4_LMGT3 GT3 WEC2025"
+        m = re.search(r'VehicleClassSetting="([^"]+)"', t)
+        if m:
+            return m.group(1).strip()
+        # LMU format: //VEH=...\Vehicles\<car_folder>\...
+        m = re.search(r'//VEH=.*?[/\\]Vehicles[/\\]([^/\\]+)', t, re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
     except Exception:
         pass
     return None
 
 
-def guess_track_from_svm(p: Path) -> str | None:
+def guess_track_from_svm(p: Path, available_tracks: list[str] | None = None) -> str | None:
     try:
         t = p.read_text(encoding="utf-8", errors="ignore")
         for pat in [r'TrackName="([^"]+)"', r"TrackName=([^\r\n]+)",
@@ -201,6 +209,34 @@ def guess_track_from_svm(p: Path) -> str | None:
                 return v
     except Exception:
         pass
+    # Fallback: fuzzy-match filename and parent folder against available tracks
+    if available_tracks:
+        sources = []
+        if p.parent.name:
+            sources.append(p.parent.name)
+        sources.append(p.stem)
+        best_match = None
+        best_score = 0
+        for src in sources:
+            sn = re.sub(r'[\s_\-]+', '', src).lower()
+            for track in available_tracks:
+                tn = re.sub(r'[\s_\-]+', '', track).lower()
+                # Full containment
+                if tn in sn or sn in tn:
+                    score = min(len(tn), len(sn))
+                    if score > best_score:
+                        best_score = score
+                        best_match = track
+                    continue
+                # Significant parts of track folder name (>=4 chars)
+                parts = re.split(r'[\s_\-]+', track.lower())
+                for part in parts:
+                    if len(part) >= 4 and part in sn:
+                        if len(part) > best_score:
+                            best_score = len(part)
+                            best_match = track
+        if best_match:
+            return best_match
     return None
 
 
@@ -830,10 +866,10 @@ class App(tk.Tk):
         else:
             self._detected_car_var.set("Non rilevata — scegli manualmente")
 
-        track = guess_track_from_svm(svm)
+        tracks = list(self._track_combo["values"])
+        track = guess_track_from_svm(svm, tracks)
         if track:
             self._detected_track_var.set(track)
-            tracks = list(self._track_combo["values"])
             match = next(
                 (t for t in tracks if track.lower() in t.lower() or t.lower() in track.lower()), None)
             self._track_var.set(match if match else track)
@@ -963,7 +999,8 @@ class App(tk.Tk):
             if not car:
                 car = car_fallback
 
-            track = guess_track_from_svm(sf) or trk_fallback
+            avail_tracks = get_track_folders(sdir, car)
+            track = guess_track_from_svm(sf, avail_tracks) or trk_fallback
 
             dd = sdir / car
             if track:
