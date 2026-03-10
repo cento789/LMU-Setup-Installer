@@ -1,81 +1,81 @@
 # LMU Setup Installer v6
 
-Applicazione desktop per installare i file setup (`.svm`) di **Le Mans Ultimate** nella cartella corretta, in base all'auto e al tracciato selezionati.
+A desktop application to install Le Mans Ultimate setup files (`.svm`) into the correct folder, based on the selected car and track.
 
-Supporta **file compressi** (.zip, .7z, .rar), **installazione batch**, **anteprima parametri**, **cronologia** e **rollback**.
+Supports **compressed files** (.zip, .7z, .rar), **batch installation**, **parameter preview**, **history** and **rollback**.
 
 ---
 
-## Funzionalità
+## Features
 
-### Installazione setup
-- **Rilevamento automatico** della cartella Settings di LMU
-- **Rilevamento automatico** di auto e tracciato dal contenuto del file `.svm`
-- **Selezione manuale** di auto e tracciato tramite menu a tendina
-- **Sovrascrittura** e **backup automatico** (`.svm.bak`) configurabili
+### Setup installation
+- **Automatic detection** of the LMU Settings folder
+- **Automatic detection** of car and track from the `.svm` file contents
+- **Manual selection** of car and track via dropdown menus
+- **Overwrite** and **automatic backup** (`.svm.bak`) are configurable
 
-### File compressi
-- Supporto archivi **.zip**, **.7z**, **.rar**
-- Estrazione automatica e scansione ricorsiva dei file `.svm` nell'archivio
-- Se l'archivio contiene più setup → dialog di selezione o installazione batch
+### Compressed files
+- Support for **.zip**, **.7z**, **.rar** archives
+- Automatic extraction and recursive scanning for `.svm` files within the archive
+- If the archive contains multiple setups → selection dialog or batch installation
 
-### Installazione batch
-- Trascinare più file contemporaneamente sulla finestra
-- Selezionare più file dal dialog "Sfoglia"
-- Auto-detection di auto/tracciato per ciascun file; fallback sulla selezione corrente
+### Batch installation
+- Drag multiple files onto the window at once
+- Select multiple files from the "Browse" dialog
+- Auto-detection of car/track for each file; falls back to the current selection
 
-### Anteprima setup
-- Visualizzazione parametri chiave: pressione gomme, ali, carburante, freni, barre, rapporto finale, toe, camber
+### Setup preview
+- Displays key parameters: tire pressures, wings, fuel, brakes, anti-roll bars, final drive ratio, toe, camber
 
-### Cronologia
-- Ultime 20 installazioni memorizzate
-- Doppio click su una voce → apre la cartella di destinazione
-- Possibilità di svuotare la cronologia
+### History
+- Last 20 installations stored
+- Double-click an entry → opens the destination folder
+- Option to clear the entire history
 
 ### Rollback
-- Ripristino del backup `.svm.bak` con un click
-- Se nella cartella ci sono più backup → dialog per scegliere quale ripristinare
+- Restore a `.svm.bak` backup with one click
+- If multiple backups exist in the folder → selection dialog
 
-### Scorciatoie tastiera
-| Shortcut | Azione |
+### Keyboard shortcuts
+| Shortcut | Action |
 |----------|--------|
-| `Ctrl+O` | Sfoglia file |
-| `Ctrl+I` | Installa setup |
+| `Ctrl+O` | Browse files |
+| `Ctrl+I` | Install setup |
 | `Ctrl+R` | Rollback |
 
 ### Drag & Drop
-- Trascina file `.svm` o archivi direttamente sulla finestra
-- Supporto trascinamento multiplo
+- Drag `.svm` files or archives directly onto the window
+- Multiple file drag support
 
-### Altro
-- **Configurazione persistente** (cartella LMU memorizzata tra le sessioni)
-- **Interfaccia grafica** con palette Le Mans Ultimate (blu notte, oro, rosso racing)
-- **Icona personalizzata** con bandiera a scacchi
+### Other
+- **Persistent configuration** (LMU folder saved between sessions)
+- **GUI** with Le Mans Ultimate color palette (deep navy, gold, racing red)
+- **Custom icon** with checkered flag
 
 ---
 
 ## Download
 
-Scarica `LMU Setup Installer.exe` dalla cartella `dist\`. Non richiede installazione — basta avviarlo.
+Download `LMU Setup Installer.exe` from the `dist\` folder. No installation required — just run it.
 
 ---
 
-## Utilizzo rapido
+## Quick start
 
-1. **Avvia** `LMU Setup Installer.exe`
-2. La cartella LMU viene rilevata automaticamente (oppure usa "Sfoglia…")
-3. **Trascina** un file `.svm` o un archivio sulla finestra (oppure usa `Ctrl+O`)
-4. L'app rileva auto e tracciato — verifica o modifica manualmente
-5. Clicca **Installa** (o `Ctrl+I`)
-6. Puoi aprire la cartella di destinazione o fare rollback in qualsiasi momento
+1. **Launch** `LMU Setup Installer.exe`
+2. The LMU folder is detected automatically (or use "Browse...")
+3. **Drag** an `.svm` file or archive onto the window (or use `Ctrl+O`)
+4. The app detects car and track — verify or change manually
+5. Click **Install** (or `Ctrl+I`)
+6. You can open the destination folder or rollback at any time
 
 ---
 
-## Compilare da sorgente
+## Building from source
 
-### Requisiti
-- **Python 3.10+** — [python.org](https://www.python.org/downloads/) (seleziona "Add Python to PATH")
-- Librerie: `pip install pyinstaller pillow tkinterdnd2 py7zr rarfile`
+### Requirements
+- **Python 3.10+** — [python.org](https://www.python.org/downloads/) (select "Add Python to PATH")
+- Libraries: `pip install pyinstaller pillow tkinterdnd2 py7zr rarfile`
 
 ### Build
 
@@ -83,7 +83,7 @@ Scarica `LMU Setup Installer.exe` dalla cartella `dist\`. Non richiede installaz
 build_exe.bat
 ```
 
-oppure manualmente:
+or manually:
 
 ```batch
 pip install pyinstaller pillow tkinterdnd2 py7zr rarfile
@@ -91,9 +91,9 @@ python -c "from lmu_setup_installer import export_icon; from pathlib import Path
 python -m PyInstaller --onefile --windowed --name "LMU Setup Installer" --icon lmu_icon.ico --collect-all tkinterdnd2 --collect-all py7zr --hidden-import rarfile lmu_setup_installer.py
 ```
 
-Il file `.exe` sarà in `dist\LMU Setup Installer.exe` (~22 MB).
+The `.exe` will be in `dist\LMU Setup Installer.exe` (~22 MB).
 
-### Eseguire senza compilare
+### Run without compiling
 
 ```batch
 python lmu_setup_installer.py
@@ -101,16 +101,16 @@ python lmu_setup_installer.py
 
 ---
 
-## Struttura cartelle LMU attesa
+## Expected LMU folder structure
 
 ```
-Documenti\
+Documents\
   Le Mans Ultimate\
     UserData\
       player\
         Settings\
-          Ferrari 499P\            ← cartella per ciascuna auto
-            Le Mans\               ← sotto-cartella per tracciato (opzionale)
+          Ferrari 499P\            ← one folder per car
+            Le Mans\               ← track subfolder (optional)
             Monza\
           Toyota GR010\
           Peugeot 9X8\
@@ -119,9 +119,9 @@ Documenti\
 
 ---
 
-## Note
+## Notes
 
-- Se la cartella LMU non viene trovata automaticamente, usa **Sfoglia…** per selezionarla manualmente.
-- Il rilevamento automatico funziona se il file `.svm` contiene i campi `GameVehicleClass`, `Vehicle`, `TrackName`, `Circuit` o `RaceConfigPath`.
-- Il campo **Tracciato** è opzionale: se lasciato vuoto, il setup viene copiato nella cartella radice dell'auto.
-- I backup (`.svm.bak`) vengono creati nella stessa cartella del file di destinazione.
+- If the LMU folder is not found automatically, use **Browse...** to select it manually.
+- Automatic detection works if the `.svm` file contains `GameVehicleClass`, `Vehicle`, `TrackName`, `Circuit` or `RaceConfigPath` fields.
+- The **Track** field is optional: if left empty, the setup is copied to the car's root folder.
+- Backups (`.svm.bak`) are created in the same folder as the destination file.
