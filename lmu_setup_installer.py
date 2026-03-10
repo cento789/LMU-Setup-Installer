@@ -161,17 +161,19 @@ def find_lmu_settings_dir() -> Path | None:
     return None
 
 
-def get_car_folders(d: Path) -> list[str]:
+def get_track_folders(d: Path) -> list[str]:
+    """Primo livello: cartelle tracciato sotto Settings."""
     if not d or not d.is_dir():
         return []
     return sorted([x.name for x in d.iterdir() if x.is_dir()], key=str.lower)
 
 
-def get_track_folders(d: Path, car: str) -> list[str]:
-    if not d or not car:
+def get_car_folders(d: Path, track: str) -> list[str]:
+    """Secondo livello: cartelle auto sotto Settings/<track>."""
+    if not d or not track:
         return []
-    cd = d / car
-    return sorted([x.name for x in cd.iterdir() if x.is_dir()], key=str.lower) if cd.is_dir() else []
+    td = d / track
+    return sorted([x.name for x in td.iterdir() if x.is_dir()], key=str.lower) if td.is_dir() else []
 
 
 def guess_car_from_svm(p: Path) -> str | None:
@@ -555,25 +557,9 @@ class App(tk.Tk):
         self._preview_grid.pack(fill="x")
         # Preview will be populated dynamically
 
-        # ── Auto & Tracciato ──
-        SectionLabel(outer, "Auto & Tracciato", "🏎").pack(fill="x", pady=(16, 6))
+        # ── Tracciato & Auto ──
+        SectionLabel(outer, "Tracciato & Auto", "🏎").pack(fill="x", pady=(16, 6))
         c3 = self._card(outer)
-
-        ra = tk.Frame(c3, bg=C["surface"]); ra.pack(fill="x", pady=3)
-        self._flbl(ra, "Rilevata:")
-        self._detected_car_var = tk.StringVar(value="—")
-        tk.Label(ra, textvariable=self._detected_car_var, bg=C["surface"],
-                 fg=C["accent"], font=(FONT, 11, "bold")).pack(side="left", padx=6)
-
-        rb = tk.Frame(c3, bg=C["surface"]); rb.pack(fill="x", pady=4)
-        self._flbl(rb, "Auto:")
-        self._car_var = tk.StringVar()
-        self._car_combo = ttk.Combobox(rb, textvariable=self._car_var,
-                                       state="readonly", font=(FONT, 10))
-        self._car_combo.pack(side="left", fill="x", expand=True, padx=(6, 0))
-        self._car_combo.bind("<<ComboboxSelected>>", self._on_car_changed)
-
-        tk.Frame(c3, bg=C["border"], height=1).pack(fill="x", pady=10, padx=8)
 
         rc = tk.Frame(c3, bg=C["surface"]); rc.pack(fill="x", pady=3)
         self._flbl(rc, "Rilevato:")
@@ -584,9 +570,25 @@ class App(tk.Tk):
         rd = tk.Frame(c3, bg=C["surface"]); rd.pack(fill="x", pady=4)
         self._flbl(rd, "Tracciato:")
         self._track_var = tk.StringVar()
-        self._track_combo = ttk.Combobox(rd, textvariable=self._track_var, font=(FONT, 10))
+        self._track_combo = ttk.Combobox(rd, textvariable=self._track_var,
+                                         state="readonly", font=(FONT, 10))
         self._track_combo.pack(side="left", fill="x", expand=True, padx=(6, 0))
-        tk.Label(c3, text="Vuoto = cartella radice dell'auto  ·  Puoi digitare un nuovo nome tracciato",
+        self._track_combo.bind("<<ComboboxSelected>>", self._on_track_changed)
+
+        tk.Frame(c3, bg=C["border"], height=1).pack(fill="x", pady=10, padx=8)
+
+        ra = tk.Frame(c3, bg=C["surface"]); ra.pack(fill="x", pady=3)
+        self._flbl(ra, "Rilevata:")
+        self._detected_car_var = tk.StringVar(value="—")
+        tk.Label(ra, textvariable=self._detected_car_var, bg=C["surface"],
+                 fg=C["accent"], font=(FONT, 11, "bold")).pack(side="left", padx=6)
+
+        rb = tk.Frame(c3, bg=C["surface"]); rb.pack(fill="x", pady=4)
+        self._flbl(rb, "Auto:")
+        self._car_var = tk.StringVar()
+        self._car_combo = ttk.Combobox(rb, textvariable=self._car_var, font=(FONT, 10))
+        self._car_combo.pack(side="left", fill="x", expand=True, padx=(6, 0))
+        tk.Label(c3, text="Vuoto = cartella radice del tracciato  ·  Puoi digitare un nuovo nome auto",
                  bg=C["surface"], fg=C["fg3"], font=(FONT, 9)).pack(anchor="w", padx=6, pady=(2, 2))
 
         # ── Opzioni ──
@@ -828,13 +830,13 @@ class App(tk.Tk):
         saved = self._config.get("settings_dir", "")
         if saved and Path(saved).is_dir():
             self._settings_var.set(saved)
-            self._refresh_car_list()
+            self._refresh_track_list()
             self._set_status("Cartella LMU caricata dalla configurazione", "ok")
             return
         path = find_lmu_settings_dir()
         if path:
             self._settings_var.set(str(path))
-            self._refresh_car_list()
+            self._refresh_track_list()
             self._set_status("Cartella LMU trovata automaticamente", "ok")
         else:
             self._set_status("Cartella LMU non trovata — selezionala manualmente", "warn")
@@ -843,7 +845,7 @@ class App(tk.Tk):
         path = filedialog.askdirectory(title="Seleziona cartella Settings di LMU")
         if path:
             self._settings_var.set(path)
-            self._refresh_car_list()
+            self._refresh_track_list()
             self._config["settings_dir"] = path
             save_config(self._config)
 
@@ -863,49 +865,51 @@ class App(tk.Tk):
             self._handle_batch(file_list)
 
     def _process_svm_file(self, svm: Path):
-        car = guess_car_from_svm(svm)
-        if car:
-            self._detected_car_var.set(car)
-            cars = list(self._car_combo["values"])
-            match = next(
-                (c for c in cars if car.lower() in c.lower() or c.lower() in car.lower()), None)
-            if match:
-                self._car_var.set(match)
-                self._refresh_track_list()
-        else:
-            self._detected_car_var.set("Non rilevata — scegli manualmente")
-
+        # Rileva tracciato (primo livello) dalla cartella padre del file
         tracks = list(self._track_combo["values"])
         track = guess_track_from_svm(svm, tracks)
         if track:
             self._detected_track_var.set(track)
             match = next(
                 (t for t in tracks if track.lower() in t.lower() or t.lower() in track.lower()), None)
-            self._track_var.set(match if match else track)
+            if match:
+                self._track_var.set(match)
+                self._refresh_car_list()
         else:
             self._detected_track_var.set("Non rilevato — scegli manualmente")
+
+        # Rileva auto (secondo livello) dal contenuto SVM
+        car = guess_car_from_svm(svm)
+        if car:
+            self._detected_car_var.set(car)
+            cars = list(self._car_combo["values"])
+            match = next(
+                (c for c in cars if car.lower() in c.lower() or c.lower() in car.lower()), None)
+            self._car_var.set(match if match else car)
+        else:
+            self._detected_car_var.set("Non rilevata — scegli manualmente")
         self._set_status(f"Setup caricato: {svm.name}", "ok")
 
-    def _on_car_changed(self, _e=None):
-        self._refresh_track_list()
-
-    def _refresh_car_list(self):
-        sp = self._settings_var.get().strip()
-        if not sp:
-            return
-        cars = get_car_folders(Path(sp))
-        self._car_combo["values"] = cars
-        if cars:
-            self._car_combo.current(0)
-        self._refresh_track_list()
+    def _on_track_changed(self, _e=None):
+        self._refresh_car_list()
 
     def _refresh_track_list(self):
         sp = self._settings_var.get().strip()
-        car = self._car_var.get().strip()
-        if not sp or not car:
-            self._track_combo["values"] = []
+        if not sp:
             return
-        self._track_combo["values"] = get_track_folders(Path(sp), car)
+        tracks = get_track_folders(Path(sp))
+        self._track_combo["values"] = tracks
+        if tracks:
+            self._track_combo.current(0)
+        self._refresh_car_list()
+
+    def _refresh_car_list(self):
+        sp = self._settings_var.get().strip()
+        trk = self._track_var.get().strip()
+        if not sp or not trk:
+            self._car_combo["values"] = []
+            return
+        self._car_combo["values"] = get_car_folders(Path(sp), trk)
 
     # ------------------------------------------------------------------
     # Installazione (singola + batch)
@@ -920,8 +924,8 @@ class App(tk.Tk):
     def _install_single(self):
         ss = self._settings_var.get().strip()
         su = self._setup_var.get().strip()
-        car = self._car_var.get().strip()
         trk = self._track_var.get().strip()
+        car = self._car_var.get().strip()
 
         if not ss:
             messagebox.showwarning("Attenzione", "Specifica la cartella Settings di LMU.")
@@ -929,8 +933,8 @@ class App(tk.Tk):
         if not su:
             messagebox.showwarning("Attenzione", "Seleziona un file setup (.svm).")
             return
-        if not car:
-            messagebox.showwarning("Attenzione", "Seleziona l'auto di destinazione.")
+        if not trk:
+            messagebox.showwarning("Attenzione", "Seleziona il tracciato di destinazione.")
             return
 
         sdir = Path(ss)
@@ -939,9 +943,9 @@ class App(tk.Tk):
             messagebox.showerror("Errore", f"File non trovato:\n{sf}")
             return
 
-        dd = sdir / car
-        if trk:
-            dd = dd / trk
+        dd = sdir / trk
+        if car:
+            dd = dd / car
         dd.mkdir(parents=True, exist_ok=True)
         df = dd / sf.name
 
@@ -961,15 +965,15 @@ class App(tk.Tk):
             self._last_dest_dir = dd
             self._open_btn.set_enabled(True)
             self._rollback_btn.set_enabled(True)
-            ti = f" / {trk}" if trk else ""
-            self._set_status(f"Installato: {sf.name}  →  {car}{ti}", "success")
+            ci = f" / {car}" if car else ""
+            self._set_status(f"Installato: {sf.name}  →  {trk}{ci}", "success")
             self._config["settings_dir"] = ss
             save_config(self._config)
-            self._add_history_entry(sf.name, car, trk, str(dd))
-            trk_info = f"\nTracciato: {trk}" if trk else "\nTracciato: (radice auto)"
+            self._add_history_entry(sf.name, trk, car, str(dd))
+            car_info = f"\nAuto: {car}" if car else "\nAuto: (radice tracciato)"
             messagebox.showinfo("Successo! 🏁",
                                 f"Setup installato correttamente!\n\n"
-                                f"Auto: {car}{trk_info}\nFile: {df}")
+                                f"Tracciato: {trk}{car_info}\nFile: {df}")
         except Exception as exc:
             messagebox.showerror("Errore", str(exc))
             self._set_status(f"Errore: {exc}", "error")
@@ -977,14 +981,14 @@ class App(tk.Tk):
     def _install_batch(self):
         """Installa tutti i file in coda (batch mode)."""
         ss = self._settings_var.get().strip()
-        car_fallback = self._car_var.get().strip()
         trk_fallback = self._track_var.get().strip()
+        car_fallback = self._car_var.get().strip()
 
         if not ss:
             messagebox.showwarning("Attenzione", "Specifica la cartella Settings di LMU.")
             return
-        if not car_fallback:
-            messagebox.showwarning("Attenzione", "Seleziona l'auto di destinazione (usata come fallback).")
+        if not trk_fallback:
+            messagebox.showwarning("Attenzione", "Seleziona il tracciato di destinazione (usato come fallback).")
             return
 
         sdir = Path(ss)
@@ -998,22 +1002,23 @@ class App(tk.Tk):
                 results.append(f"❌ {sf.name} — file non trovato")
                 continue
 
-            # Auto-detect per ogni file
+            # Auto-detect tracciato dalla cartella padre
+            avail_tracks = get_track_folders(sdir)
+            track = guess_track_from_svm(sf, avail_tracks) or trk_fallback
+
+            # Auto-detect auto dal contenuto SVM
             car = None
             detected_car = guess_car_from_svm(sf)
             if detected_car:
-                cars = list(self._car_combo["values"])
-                car = next((c for c in cars if detected_car.lower() in c.lower()
+                avail_cars = get_car_folders(sdir, track)
+                car = next((c for c in avail_cars if detected_car.lower() in c.lower()
                             or c.lower() in detected_car.lower()), None)
             if not car:
                 car = car_fallback
 
-            avail_tracks = get_track_folders(sdir, car)
-            track = guess_track_from_svm(sf, avail_tracks) or trk_fallback
-
-            dd = sdir / car
-            if track:
-                dd = dd / track
+            dd = sdir / track
+            if car:
+                dd = dd / car
             dd.mkdir(parents=True, exist_ok=True)
             df = dd / sf.name
 
@@ -1029,9 +1034,9 @@ class App(tk.Tk):
 
             try:
                 shutil.copy2(sf, df)
-                ti = f"/{track}" if track else ""
-                results.append(f"✅ {sf.name}  →  {car}{ti}")
-                self._add_history_entry(sf.name, car, track, str(dd))
+                ci = f"/{car}" if car else ""
+                results.append(f"✅ {sf.name}  →  {track}{ci}")
+                self._add_history_entry(sf.name, track, car, str(dd))
                 self._last_dest_dir = dd
                 ok_count += 1
             except Exception as exc:
